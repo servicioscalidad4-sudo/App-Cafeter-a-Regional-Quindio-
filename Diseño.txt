@@ -1,0 +1,318 @@
+DESARROLLO DE SISTEMA CRM – APP DATOS DE CAFETERÍA REGIONAL QUINDIO
+Jardines del Renacer
+Actúa como arquitecto de software, analista de procesos y desarrollador senior especializado en sistemas CRM, dashboards administrativos, aplicaciones web multiusuario y bases de datos.
+Necesito desarrollar una aplicación web profesional denominada SISTEMA CRM – DATOS DE CAFETERÍA JARDINES DEL RENACER, que permita administrar, registrar, consultar, modificar, controlar y auditar los gastos de cafetería de todas las regionales de la organización.
+La aplicación debe ser responsive, funcionar en computadores, tabletas y celulares, y contar con una interfaz moderna, intuitiva y de fácil manejo.
+Tomar como referencia visual la aplicación actual App Datos de Cafetería, conservando la navegación lateral con las regionales, pero mejorando el diseño y convirtiéndola en un sistema administrativo centralizado.
+1. ARQUITECTURA GENERAL
+El sistema debe ser multiusuario y multirregional.
+Cada registro debe quedar relacionado automáticamente con:
+    • Usuario que realiza el registro.
+    • Regional asignada.
+    • Sede.
+    • Fecha y hora de creación.
+    • Fecha y hora de última modificación.
+    • Usuario que realizó la modificación.
+Los usuarios no deben poder consultar, editar ni eliminar información de otras regionales, salvo autorización expresa del administrador.
+La información debe almacenarse en una base de datos centralizada. Los registros de todas las regionales deben consolidarse automáticamente para los reportes administrativos.
+2. SISTEMA DE INGRESO Y USUARIOS
+Crear una pantalla inicial de autenticación con:
+    • Iniciar sesión.
+    • Crear usuario.
+    • Recuperar contraseña.
+    • Cerrar sesión.
+    • Recordar sesión de manera segura.
+El registro de usuarios debe solicitar:
+    • Nombre completo.
+    • Correo electrónico.
+    • Número de celular.
+    • Usuario.
+    • Contraseña.
+    • Regional.
+    • Sede.
+    • Cargo o rol.
+Los usuarios nuevos deben quedar pendientes de aprobación del administrador.
+Roles y permisos
+ADMINISTRADOR GENERAL
+Es el único que puede:
+    • Crear, activar, bloquear y desactivar usuarios.
+    • Asignar o cambiar regionales.
+    • Crear, modificar y eliminar sedes.
+    • Crear, cambiar o actualizar coordinadores.
+    • Modificar tarifas y valores de cafetería.
+    • Configurar valores anuales.
+    • Consultar información de todas las regionales.
+    • Editar o corregir registros de cualquier regional.
+    • Consultar auditoría de modificaciones.
+    • Generar reportes consolidados.
+    • Configurar permisos y parámetros del sistema.
+COORDINADOR REGIONAL
+Puede:
+    • Ingresar información de su regional.
+    • Consultar registros de su regional.
+    • Editar registros autorizados.
+    • Consultar reportes de su regional.
+    • Registrar auxiliares de cafetería.
+    • Consultar los valores vigentes.
+    • Enviar reportes por WhatsApp.
+No puede:
+    • Modificar tarifas.
+    • Crear o cambiar coordinadores oficiales.
+    • Cambiar su regional.
+    • Modificar configuraciones generales.
+AUXILIAR / USUARIO OPERATIVO
+Puede:
+    • Registrar información autorizada.
+    • Consultar sus registros.
+    • Editar registros propios cuando tenga permiso.
+No puede modificar configuraciones administrativas.
+3. DASHBOARD PRINCIPAL
+Diseñar un dashboard moderno con indicadores:
+    • Total de servicios registrados.
+    • Total de gastos de cafetería.
+    • Valor total a pagar.
+    • Total de horas diurnas.
+    • Total de horas nocturnas.
+    • Cantidad de servicios por regional.
+    • Cantidad de servicios por sede.
+    • Gastos por mes.
+    • Gastos por año.
+    • Gastos por coordinador.
+    • Gastos por auxiliar de cafetería.
+Incluir filtros por:
+    • Año.
+    • Mes.
+    • Regional.
+    • Sede.
+    • Coordinador.
+    • Auxiliar.
+    • Prestación.
+Incluir gráficos de barras, gráficos circulares y tendencias mensuales.
+El administrador puede consultar todas las regionales y los coordinadores solamente la información de su regional.
+4. MÓDULO DE REGISTRO DE CAFETERÍA
+Crear un formulario para registrar cada servicio con los siguientes campos:
+    1. FECHA.
+    2. REGIONAL.
+    3. SEDE.
+    4. AUXILIAR DE CAFETERÍA.
+    5. NOMBRE DEL FALLECIDO.
+    6. PRESTACIÓN.
+    7. HORA DE INGRESO.
+    8. HORA DE SALIDA.
+    9. TOTAL DE HORAS.
+    10. TURNO.
+    11. VALOR HORAS DIURNAS.
+    12. VALOR HORAS NOCTURNAS.
+    13. VALOR A PAGAR.
+    14. COORDINADOR QUE REPORTA.
+    15. OBSERVACIONES POR ADMINISTRACIÓN.
+
+NOTA: los valores se calcula automaticamente luego de ingresera o seleccinoar la hora de ingreso y salida, seha de diurnas o nocturnas 
+Reglas del formulario:
+    • La regional se asigna automáticamente según el usuario.
+    • La sede se selecciona entre las sedes habilitadas para esa regional.
+    • El coordinador se carga desde la configuración administrativa.
+    • Las tarifas se consultan automáticamente según regional, año y turno.
+    • Calcular automáticamente el total de horas.
+    • Calcular el valor correspondiente según las tarifas vigentes.
+    • Permitir turnos que crucen la medianoche.
+    • Permitir dividir un servicio en diferentes jornadas.
+    • Mostrar el total acumulado por prestación.
+    • Evitar registros duplicados mediante validaciones.
+    • Permitir guardar y posteriormente editar registros autorizados.
+5. CONFIGURACIÓN ADMINISTRATIVA DE TARIFAS POR AÑO
+Este es uno de los módulos más importantes.
+Crear un apartado exclusivo para el administrador denominado:
+CONFIGURACIÓN DE VALORES DE CAFETERÍA
+El administrador debe poder seleccionar:
+    • Año de vigencia.
+    • Regional.
+    • Sede (cuando la tarifa requiera diferenciación por sede).
+    • Valor hora diurna.
+    • Valor hora nocturna.
+    • Otros conceptos o tarifas que se incorporen posteriormente.
+Cada regional puede tener valores diferentes.
+Ejemplo de configuración:
+    • Armenia: tarifas propias.
+    • Barcelona: tarifas propias.
+    • Calarcá: tarifas propias.
+    • Circasia: tarifas propias.
+    • Córdoba: tarifas propias.
+    • Génova: tarifas propias.
+    • La Tebaida: tarifas propias.
+    • Montenegro: tarifas propias.
+    • Pijao: tarifas propias.
+    • Quimbaya: tarifas propias.
+El administrador podrá configurar los valores para 2026, 2027, 2028 y los años siguientes.
+Reglas obligatorias:
+    1. Cuando el administrador actualice una tarifa, el sistema debe actualizar automáticamente los valores disponibles para los usuarios de la regional correspondiente.
+    2. No debe ser necesario ingresar a cada regional para modificar los valores.
+    3. Una tarifa de una regional no debe modificar las tarifas de las demás.
+    4. Permitir copiar la configuración del año anterior y modificar solamente los valores que cambien.
+    5. Guardar histórico de tarifas por año.
+    6. Los registros anteriores deben conservar el valor con el que fueron liquidados.
+    7. No recalcular servicios históricos cuando se modifiquen las tarifas actuales.
+    8. Registrar quién realizó cada cambio y cuándo.
+    9. Permitir definir fecha de inicio y finalización de vigencia.
+    10. No permitir dos configuraciones activas incompatibles para la misma regional, sede, concepto y periodo.
+6. ADMINISTRACIÓN DE COORDINADORES
+Crear un módulo exclusivo del administrador:
+GESTIÓN DE COORDINADORES
+Debe permitir:
+    • Crear coordinadores.
+    • Cambiar nombres.
+    • Actualizar apellidos.
+    • Cambiar regional asignada.
+    • Activar o desactivar coordinadores.
+    • Consultar historial de cambios.
+Los coordinadores que aparezcan en los formularios de registro deben actualizarse automáticamente.
+Cuando se cambie el nombre de un coordinador, no se deben alterar los registros históricos. Estos deben conservar el nombre y la identificación del coordinador que reportó originalmente.
+Ningún coordinador regional podrá cambiar su propio nombre ni el de otros coordinadores.
+7. ENVÍO AUTOMÁTICO DE REPORTES POR WHATSAPP
+Incorporar un botón denominado:
+ENVIAR REPORTE POR WHATSAPP
+Al presionarlo, el sistema debe construir automáticamente un mensaje con los datos del registro.
+El formato debe conservar esta estructura:
+Buenos días ☀️ / Buenas tardes 🌜 / Buenas noches 🌚
+💰 REPORTE GASTOS DE CAFETERÍA
+☺️ Regional: [REGIONAL]
+Fecha: [FECHA]
+Sede: [SEDE]
+Prestación: [PRESTACIÓN]
+Nombre del fallecido: [NOMBRE DEL FALLECIDO]
+Concepto: [OBSERVACIONES POR ADMINISTRACIÓN]
+Nombre auxiliar: [AUXILIAR DE CAFETERÍA]
+Hora de inicio: [HORA DE INGRESO]
+Hora de salida: [HORA DE SALIDA]
+Total de horas: [TOTAL DE HORAS]
+Turno de cafetería: [TURNO]
+Valor a cancelar: $[VALOR A PAGAR]
+SMS App Datos de Cafetería.
+La aplicación debe:
+    • Identificar automáticamente el saludo según la hora del dispositivo o del servidor.
+    • Tomar la regional y los demás datos directamente del registro.
+    • Codificar correctamente los caracteres especiales, tildes, saltos de línea y emojis.
+    • Permitir seleccionar o configurar el número de WhatsApp destinatario.
+    • Abrir WhatsApp con el mensaje previamente diligenciado.
+    • Permitir enviar desde WhatsApp Web o WhatsApp móvil.
+    • No afirmar que el mensaje fue enviado si el usuario no lo ha enviado efectivamente.
+Utilizar como referencia la integración actual:
+https://api.whatsapp.com/send?phone=NUMERO&text=MENSAJE_CODIFICADO
+Implementar la codificación con encodeURIComponent o el mecanismo equivalente de la plataforma.
+El número de destino debe estar configurado por el administrador, incluyendo indicativo del país.
+8. MÓDULO DE CONSULTAS Y REPORTES
+Crear consultas con filtros avanzados.
+Permitir:
+    • Consultar por prestación.
+    • Consultar por fallecido.
+    • Consultar por auxiliar.
+    • Consultar por coordinador.
+    • Consultar por fechas.
+    • Consultar por regional.
+    • Consultar por turno.
+    • Consultar por valores pagados.
+Permitir exportar a Excel y PDF.
+Crear reportes mensuales, trimestrales y anuales.
+El administrador debe poder generar consolidado general y comparativos entre regionales.
+9. CONTROL Y AUDITORÍA
+Incorporar trazabilidad de todas las operaciones:
+    • Usuario que creó el registro.
+    • Fecha de creación.
+    • Usuario que modificó.
+    • Fecha de modificación.
+    • Valor anterior.
+    • Valor nuevo.
+    • Cambios en tarifas.
+    • Cambios en coordinadores.
+    • Cambios de regionales.
+    • Registros eliminados o anulados.
+Los registros financieros no deben eliminarse físicamente sin autorización y trazabilidad. Implementar anulación lógica.
+10. DISEÑO VISUAL
+Tomar como referencia la aplicación actual App Datos de Cafetería.
+Diseño requerido:
+    • Interfaz corporativa moderna.
+    • Fondo blanco o gris claro.
+    • Azul corporativo como color principal.
+    • Menú lateral izquierdo.
+    • Logotipo de Jardines del Renacer.
+    • Tarjetas KPI.
+    • Tablas profesionales.
+    • Formularios organizados.
+    • Botones claros.
+    • Diseño adaptable a celular.
+    • Iconografía moderna.
+    • Búsqueda rápida.
+    • Notificaciones de guardado y errores.
+Menú principal:
+    1. Dashboard.
+    2. Registrar cafetería.
+    3. Consultar registros.
+    4. Sedes y regionales.
+    5. Auxiliares.
+    6. Coordinadores.
+    7. Tarifas y valores.
+    8. Reportes.
+    9. Auditoría.
+    10. Administración.
+    11. Mi perfil.
+    12. Cerrar sesión.
+Los módulos administrativos deben estar ocultos para usuarios sin permisos.
+11. BASE DE DATOS
+Diseñar una estructura centralizada con tablas independientes:
+    • Usuarios.
+    • Roles y permisos.
+    • Regionales.
+    • Sedes.
+    • Coordinadores.
+    • Auxiliares.
+    • Registros_Cafetería.
+    • Tarifas_Anuales.
+    • Configuración.
+    • Auditoría.
+    • Historial_Cambios.
+Cada registro debe tener un identificador único.
+No utilizar una hoja independiente por regional como única fuente de información. Centralizar los datos y filtrar por regional y permisos.
+12. SEGURIDAD Y CALIDAD
+Implementar:
+    • Contraseñas cifradas mediante hash seguro.
+    • Validación de sesiones.
+    • Autorización en el servidor.
+    • Protección contra acceso a otras regionales.
+    • Validación de datos.
+    • Copias de seguridad.
+    • Control de concurrencia.
+    • Registro de errores.
+    • Confirmación antes de anular registros.
+    • Protección de información personal.
+Nunca confiar únicamente en ocultar botones para controlar los permisos.
+13. MIGRACIÓN DE LA INFORMACIÓN EXISTENTE
+Utilizar el archivo Excel App Datos De Cafeteria.xlsx y la hoja de Google Sheets existente como fuentes para analizar y migrar los datos históricos.
+Conservar las columnas actuales:
+FECHA, SEDE, AUXILIAR DE CAFETERÍA, NOMBRE DEL FALLECIDO, PRESTACIÓN, HORA DE INGRESO, HORA DE SALIDA, TOTAL DE HORAS, TURNO, VALOR HORAS DIURNAS, VALOR HORAS NOCTURNAS, VALOR A PAGAR, COORDINADOR QUE REPORTA y OBS. POR ADMON.
+Importar los registros de las regionales existentes.
+Antes de migrar:
+    • Identificar encabezados.
+    • Detectar registros duplicados.
+    • Identificar valores faltantes.
+    • Detectar errores de fórmulas.
+    • Validar tarifas históricas.
+    • Conservar los valores originales.
+    • Generar un reporte de inconsistencias.
+No modificar ni eliminar información original durante la migración.
+14. METODOLOGÍA DE DESARROLLO
+Desarrollar el proyecto completo
+FASE 1: Diseño de base de datos y autenticación.
+FASE 2: Roles, regionales y permisos.
+FASE 3: Dashboard principal.
+FASE 4: Registro, edición y consultas de cafetería.
+FASE 5: Configuración anual de tarifas.
+FASE 6: Administración de coordinadores y auxiliares.
+FASE 7: Integración con WhatsApp.
+FASE 8: Reportes y exportaciones.
+FASE 9: Auditoría y trazabilidad.
+FASE 10: Migración, pruebas y puesta en producción.
+No entregar solamente un diseño visual o una demostración con datos ficticios.
+Todos los botones deben funcionar y las operaciones deben guardar realmente en la base de datos.
+Antes de desarrollar cada fase, presentar la estructura y explicar cómo se integrará con los módulos anteriores.
+OBJETIVO FINAL:
+Construir una plataforma CRM centralizada para Jardines del Renacer que permita administrar los gastos de cafetería de todas las regionales, controlar usuarios, mantener tarifas diferenciadas por regional y año, actualizar coordinadores exclusivamente desde administración y enviar reportes de manera rápida por WhatsApp, conservando la trazabilidad y el histórico de toda la información.

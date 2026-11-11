@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Datos de Cafetería — Jardines del Renacer</title>
+  <link rel="icon" type="image/png" href="https://i.ibb.co/3ykS8mS/JR-Logo.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Chart.js for interactive analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ========================================================================
+       VISTA 1: AUTENTICACIÓN (LOGIN / REGISTRO)
+       ======================================================================== -->
+  <div id="view-auth" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <img src="https://i.ibb.co/3ykS8mS/JR-Logo.png" alt="Jardines del Renacer" class="auth-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 24 24\' fill=\'%23c8a951\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+        <h2>CRM DATOS DE CAFETERÍA</h2>
+        <p>Jardines del Renacer — Sistema Centralizado</p>
+      </div>
+
+      <div class="auth-body">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-btn-login" onclick="switchAuthTab('login')">Iniciar Sesión</div>
+          <div class="auth-tab" id="tab-btn-register" onclick="switchAuthTab('register')">Solicitar Acceso</div>
+        </div>
+
+        <!-- Formulario Iniciar Sesión -->
+        <form id="form-login" onsubmit="handleLogin(event)">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label>Usuario o Correo Electrónico</label>
+            <input type="text" id="login-username" class="form-control" placeholder="Ej: admin o usuario@renacer.com" required autocomplete="username">
+          </div>
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label>Contraseña</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Ingresar al Sistema
+          </button>
+          <div style="margin-top: 15px; text-align: center; font-size: 11.5px; color: var(--text-muted);">
+            Usuario demo: <strong>admin</strong> / Clave: <strong>admin123</strong>
+          </div>
+        </form>
+
+        <!-- Formulario Registro -->
+        <form id="form-register" style="display: none;" onsubmit="handleRegister(event)">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Nombre Completo</label>
+            <input type="text" id="reg-nombre" class="form-control" placeholder="Nombres y Apellidos" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Correo Electrónico</label>
+            <input type="email" id="reg-correo" class="form-control" placeholder="correo@jardinesdelrenacer.com" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Número de Celular</label>
+            <input type="tel" id="reg-celular" class="form-control" placeholder="3100000000">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div class="form-group">
+              <label>Usuario</label>
+              <input type="text" id="reg-usuario" class="form-control" placeholder="usuario" required>
+            </div>
+            <div class="form-group">
+              <label>Contraseña</label>
+              <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div class="form-group">
+              <label>Regional</label>
+              <select id="reg-regional" class="form-control" required onchange="loadRegisterSedes()">
+                <option value="1">Regional Quindío</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Sede Principal</label>
+              <select id="reg-sede" class="form-control" required>
+                <!-- populated dynamically -->
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label>Cargo o Rol</label>
+            <input type="text" id="reg-cargo" class="form-control" placeholder="Ej: Coordinador de Servicios">
+          </div>
+          <button type="submit" class="btn btn-gold" style="width: 100%;">
+            Enviar Solicitud de Registro
+          </button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       VISTA 2: APLICACIÓN PRINCIPAL (LAYOUT CON NAVEGACIÓN LATERAL)
+       ======================================================================== -->
+  <div id="app-layout" style="display: none;">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="https://i.ibb.co/3ykS8mS/JR-Logo.png" alt="Logo" class="sidebar-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 24 24\' fill=\'%23c8a951\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+        <div class="sidebar-title">
+          <h2>JARDINES DEL RENACER</h2>
+          <p>CRM Gastos de Cafetería</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Operación</div>
+        <a class="nav-item active" onclick="navigateTo('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard General
+        </a>
+        <a class="nav-item" onclick="navigateTo('registro')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Registrar Cafetería
+        </a>
+        <a class="nav-item" onclick="navigateTo('consultas')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Consultar Registros
+        </a>
+        <a class="nav-item" onclick="navigateTo('sedes')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Sedes y Regionales
+        </a>
+        <a class="nav-item" onclick="navigateTo('auxiliares')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Auxiliares de Cafetería
+        </a>
+
+        <div class="nav-section-title admin-only">Administración</div>
+        <a class="nav-item admin-only" onclick="navigateTo('coordinadores')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Gestión Coordinadores
+        </a>
+        <a class="nav-item admin-only" onclick="navigateTo('tarifas')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Tarifas y Valores
+        </a>
+        <a class="nav-item" onclick="navigateTo('reportes')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Reportes Consolidados
+        </a>
+        <a class="nav-item admin-only" onclick="navigateTo('auditoria')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
+          Auditoría y Trazabilidad
+        </a>
+        <a class="nav-item admin-only" onclick="navigateTo('usuarios')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Usuarios y Permisos
+        </a>
+
+        <div class="nav-section-title">Cuenta</div>
+        <a class="nav-item" onclick="navigateTo('perfil')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Mi Perfil
+        </a>
+        <a class="nav-item" onclick="handleLogout()" style="color: #fca5a5;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Cerrar Sesión
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="sidebar-user-avatar">AD</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-user-name">Administrador</div>
+            <div class="user-role" id="sidebar-user-role">ADMINISTRADOR</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- WRAPPER PRINCIPAL -->
+    <div class="main-wrapper">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-menu-toggle" onclick="toggleSidebar()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="page-title">
+            <h1 id="page-heading">Dashboard General</h1>
+            <p id="page-subheading">Gestión centralizada de gastos de cafetería</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="regional-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="topbar-regional-name">Regional Quindío</span>
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="navigateTo('registro')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo Registro
+          </button>
+        </div>
+      </header>
+
+      <!-- CUERPO DE CONTENIDO -->
+      <main class="content-body">
+
+        <!-- ==================================================================
+             SUB-VISTA 1: DASHBOARD
+             ================================================================== -->
+        <section id="section-dashboard" class="app-section">
+          <!-- Filtros de Dashboard -->
+          <div class="filter-card">
+            <div class="filter-grid">
+              <div class="form-group">
+                <label>Año</label>
+                <select id="dash-filter-anio" class="form-control" onchange="loadDashboardStats()">
+                  <option value="">Todos los años</option>
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mes</label>
+                <select id="dash-filter-mes" class="form-control" onchange="loadDashboardStats()">
+                  <option value="">Todo el año</option>
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6">Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select>
+              </div>
+              <div class="form-group admin-only">
+                <label>Sede</label>
+                <select id="dash-filter-sede" class="form-control" onchange="loadDashboardStats()">
+                  <option value="">Todas las Sedes</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <button class="btn btn-outline" style="width: 100%;" onclick="resetDashboardFilters()">
+                  Limpiar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjetas KPI -->
+          <div class="kpi-grid">
+            <div class="kpi-card gold">
+              <div class="kpi-info">
+                <p>Total Servicios</p>
+                <h3 id="kpi-total-servicios">0</h3>
+              </div>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+            </div>
+
+            <div class="kpi-card green">
+              <div class="kpi-info">
+                <p>Gasto Total Cafetería</p>
+                <h3 id="kpi-total-gasto">$0</h3>
+              </div>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+            </div>
+
+            <div class="kpi-card blue">
+              <div class="kpi-info">
+                <p>Horas Totales</p>
+                <h3 id="kpi-total-horas">0 h</h3>
+              </div>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+            </div>
+
+            <div class="kpi-card purple">
+              <div class="kpi-info">
+                <p>Horas Diurnas / Nocturnas</p>
+                <h3 id="kpi-horas-desglose">0 / 0</h3>
+              </div>
+              <div class="kpi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráficos del Dashboard -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 28px;">
+            <div class="table-card" style="padding: 20px;">
+              <h3 style="font-size: 15px; color: var(--primary); margin-bottom: 16px;">Tendencia de Gastos Mensuales ($ COP)</h3>
+              <div style="height: 280px; position: relative;">
+                <canvas id="chart-mensual"></canvas>
+              </div>
+            </div>
+            <div class="table-card" style="padding: 20px;">
+              <h3 style="font-size: 15px; color: var(--primary); margin-bottom: 16px;">Distribución por Sede</h3>
+              <div style="height: 280px; position: relative;">
+                <canvas id="chart-sedes"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Auxiliares -->
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Auxiliares con Mayor Actividad</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nombre de la Auxiliar</th>
+                    <th>Servicios Reportados</th>
+                    <th>Valor Total Facturado</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-top-auxiliares-body">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 2: FORMULARIO DE REGISTRO DE CAFETERÍA
+             ================================================================== -->
+        <section id="section-registro" class="app-section" style="display: none;">
+          <div class="table-card" style="max-width: 950px; margin: 0 auto;">
+            <div class="modal-header">
+              <h3>Diligenciar Nuevo Servicio de Cafetería</h3>
+            </div>
+
+            <form id="form-nuevo-registro" onsubmit="guardarRegistroCafeteria(event)" style="padding: 24px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>1. Fecha del Servicio *</label>
+                  <input type="date" id="reg-form-fecha" class="form-control" required onchange="recalcularTarifasEnVivo()">
+                </div>
+                <div class="form-group">
+                  <label>2. Regional</label>
+                  <input type="text" class="form-control" value="Regional Quindío" readonly style="background: #f1f5f9;">
+                </div>
+                <div class="form-group">
+                  <label>3. Sede *</label>
+                  <select id="reg-form-sede" class="form-control" required onchange="recalcularTarifasEnVivo()">
+                    <!-- dynamic -->
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>4. Auxiliar de Cafetería *</label>
+                  <div style="display: flex; gap: 8px;">
+                    <select id="reg-form-auxiliar" class="form-control" required style="flex: 1;">
+                      <!-- dynamic -->
+                    </select>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="abrirModalNuevoAuxiliar()" title="Registrar nuevo auxiliar">+ Nuevo</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>6. N° de Prestación *</label>
+                  <input type="text" id="reg-form-prestacion" class="form-control" placeholder="Ej: 02-0007-26" required>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label>5. Nombre del Fallecido *</label>
+                <input type="text" id="reg-form-fallecido" class="form-control" placeholder="Nombre completo de la persona fallecida" required>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>7. Hora de Ingreso *</label>
+                  <input type="time" id="reg-form-hora-in" class="form-control" value="07:00" required onchange="recalcularTarifasEnVivo()">
+                </div>
+                <div class="form-group">
+                  <label>8. Hora de Salida *</label>
+                  <input type="time" id="reg-form-hora-out" class="form-control" value="19:00" required onchange="recalcularTarifasEnVivo()">
+                </div>
+                <div class="form-group">
+                  <label>14. Coordinador que Reporta *</label>
+                  <select id="reg-form-coordinador" class="form-control" required>
+                    <!-- loaded from admin config -->
+                  </select>
+                </div>
+              </div>
+
+              <!-- Tarjeta de Cálculo Automático en Vivo -->
+              <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 18px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-size: 13px; font-weight: 700; color: var(--primary);">Liquidación Automática de Horas y Valores</span>
+                  <span id="reg-calc-badge-turno" class="badge badge-diurno">Turno Diurno</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 13px;">
+                  <div>
+                    <span style="color: var(--text-muted); font-size: 11px;">TOTAL HORAS</span>
+                    <div id="reg-calc-total-horas" style="font-size: 16px; font-weight: 700;">12 h</div>
+                  </div>
+                  <div>
+                    <span style="color: var(--text-muted); font-size: 11px;">HORAS DIURNAS</span>
+                    <div id="reg-calc-horas-diurnas" style="font-weight: 600;">12 h ($5.900/h)</div>
+                  </div>
+                  <div>
+                    <span style="color: var(--text-muted); font-size: 11px;">HORAS NOCTURNAS</span>
+                    <div id="reg-calc-horas-nocturnas" style="font-weight: 600;">0 h ($7.500/h)</div>
+                  </div>
+                  <div style="background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--secondary);">
+                    <span style="color: var(--secondary); font-size: 11px; font-weight: 700;">VALOR A PAGAR</span>
+                    <div id="reg-calc-total-pagar" style="font-size: 18px; font-weight: 800; color: var(--primary);">$70.800</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 24px;">
+                <label>15. Observaciones por Administración</label>
+                <textarea id="reg-form-obs" class="form-control" style="height: 70px; resize: vertical;" placeholder="Conceptos adicionales o notas administrativas"></textarea>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-outline" onclick="limpiarFormularioRegistro()">Limpiar</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit-registro">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Guardar Servicio de Cafetería
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 3: CONSULTAS Y REGISTROS HISTÓRICOS
+             ================================================================== -->
+        <section id="section-consultas" class="app-section" style="display: none;">
+          <!-- Filtros de Consulta -->
+          <div class="filter-card">
+            <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));">
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Búsqueda Rápida</label>
+                <input type="text" id="filtro-search" class="form-control" placeholder="Buscar fallecido, prestación, auxiliar o consecutivo..." onkeyup="debounceBuscarRegistros()">
+              </div>
+              <div class="form-group">
+                <label>Sede</label>
+                <select id="filtro-sede" class="form-control" onchange="cargarRegistros(1)">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Coordinador</label>
+                <select id="filtro-coordinador" class="form-control" onchange="cargarRegistros(1)">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Turno</label>
+                <select id="filtro-turno" class="form-control" onchange="cargarRegistros(1)">
+                  <option value="">Todos</option>
+                  <option value="Turno Diurno">Diurno</option>
+                  <option value="Turno Nocturno">Nocturno</option>
+                  <option value="Turno Mixto">Mixto</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fecha Desde</label>
+                <input type="date" id="filtro-fecha-desde" class="form-control" onchange="cargarRegistros(1)">
+              </div>
+              <div class="form-group">
+                <label>Fecha Hasta</label>
+                <input type="date" id="filtro-fecha-hasta" class="form-control" onchange="cargarRegistros(1)">
+              </div>
+              <div class="form-group">
+                <label>Estado</label>
+                <select id="filtro-estado" class="form-control" onchange="cargarRegistros(1)">
+                  <option value="activo">Activos</option>
+                  <option value="anulado">Anulados</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+              <button class="btn btn-outline btn-sm" onclick="limpiarFiltrosConsulta()">Limpiar Filtros</button>
+              <a href="/api/export/csv" class="btn btn-gold btn-sm" target="_blank" download>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar a Excel (CSV)
+              </a>
+              <button class="btn btn-primary btn-sm" onclick="window.print()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Imprimir / PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Resultados -->
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Registros de Cafetería (<span id="total-registros-count">0</span> encontrados)</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Consecutivo</th>
+                    <th>Fecha</th>
+                    <th>Sede</th>
+                    <th>Prestación</th>
+                    <th>Fallecido</th>
+                    <th>Auxiliar</th>
+                    <th>Horario</th>
+                    <th>Horas</th>
+                    <th>Turno</th>
+                    <th>Total ($)</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-registros-body">
+                  <!-- dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Paginación -->
+            <div style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color);">
+              <span style="font-size: 12px; color: var(--text-muted);" id="paginacion-info">Página 1 de 1</span>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-outline btn-sm" id="btn-pag-prev" onclick="cambiarPagina(-1)">Anterior</button>
+                <button class="btn btn-outline btn-sm" id="btn-pag-next" onclick="cambiarPagina(1)">Siguiente</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 4: SEDES Y REGIONALES
+             ================================================================== -->
+        <section id="section-sedes" class="app-section" style="display: none;">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Sedes Habilitadas — Regional Quindío</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombre de la Sede</th>
+                    <th>Regional</th>
+                    <th>Dirección</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-sedes-body">
+                  <!-- dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 5: AUXILIARES DE CAFETERÍA
+             ================================================================== -->
+        <section id="section-auxiliares" class="app-section" style="display: none;">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Directorio de Auxiliares de Cafetería</h3>
+              <button class="btn btn-gold btn-sm" onclick="abrirModalNuevoAuxiliar()">+ Nuevo Auxiliar</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombres y Apellidos</th>
+                    <th>Documento</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-auxiliares-body">
+                  <!-- dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 6: GESTIÓN DE COORDINADORES (ADMIN)
+             ================================================================== -->
+        <section id="section-coordinadores" class="app-section" style="display: none;">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Coordinadores Oficiales de Cafetería</h3>
+              <button class="btn btn-gold btn-sm" onclick="abrirModalNuevoCoordinador()">+ Registrar Coordinador</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombre Oficial</th>
+                    <th>Regional</th>
+                    <th>Celular / WhatsApp</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-coordinadores-body">
+                  <!-- dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 7: CONFIGURACIÓN ANUAL DE TARIFAS (ADMIN)
+             ================================================================== -->
+        <section id="section-tarifas" class="app-section" style="display: none;">
+          <div class="filter-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <h3 style="font-size: 16px; color: var(--primary);">Configuración Anual de Tarifas de Cafetería</h3>
+                <p style="font-size: 12px; color: var(--text-muted);">Definición de tarifas por regional, año de vigencia y turnos</p>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline btn-sm" onclick="abrirModalCopiarTarifas()">
+                  Copiar Año Anterior
+                </button>
+                <button class="btn btn-gold btn-sm" onclick="abrirModalNuevaTarifa()">
+                  + Nueva Tarifa
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Tarifas Vigentes e Históricas</h3>
+              <select id="filtro-tarifa-anio" class="form-control" style="width: 140px;" onchange="cargarTarifas()">
+                <option value="">Todos los años</option>
+                <option value="2026" selected>Año 2026</option>
+                <option value="2025">Año 2025</option>
+                <option value="2027">Año 2027</option>
+              </select>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Año</th>
+                    <th>Regional</th>
+                    <th>Sede Aplicable</th>
+                    <th>Hora Diurna ($ COP)</th>
+                    <th>Hora Nocturna ($ COP)</th>
+                    <th>Vigencia</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-tarifas-body">
+                  <!-- dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 8: REPORTES Y CONSOLIDADOS
+             ================================================================== -->
+        <section id="section-reportes" class="app-section" style="display: none;">
+          <div class="filter-card">
+            <h3 style="font-size: 16px; color: var(--primary); margin-bottom: 12px;">Módulo de Generación de Reportes Consolidados</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              Descargue informes consolidados en formato oficial Excel o imprima la vista consolidada con firma de auditoría.
+            </p>
+            <div style="display: flex; gap: 12px;">
+              <a href="/api/export/csv" class="btn btn-gold" download>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Descargar Consolidado General (Excel)
+              </a>
+              <button class="btn btn-primary" onclick="window.print()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Imprimir Vista de Auditoría
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 9: AUDITORÍA Y TRAZABILIDAD (ADMIN)
+             ================================================================== -->
+        <section id="section-auditoria" class="app-section" style="display: none;">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Bitácora de Auditoría del Sistema</h3>
+              <span style="font-size: 12px; color: var(--text-muted);">Registro inmutable de todas las transacciones</span>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Tabla</th>
+                    <th>ID Registro</th>
+                    <th>Detalle de la Operación</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-auditoria-body">
+                  <!-- dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 10: USUARIOS Y PERMISOS (ADMIN)
+             ================================================================== -->
+        <section id="section-usuarios" class="app-section" style="display: none;">
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Usuarios y Aprobaciones del Sistema</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nombre Completo</th>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Regional / Sede</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-usuarios-body">
+                  <!-- dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SUB-VISTA 11: MI PERFIL
+             ================================================================== -->
+        <section id="section-perfil" class="app-section" style="display: none;">
+          <div class="table-card" style="max-width: 600px; margin: 0 auto; padding: 24px;">
+            <h3 style="color: var(--primary); margin-bottom: 16px;">Información de Mi Perfil</h3>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label>Nombre Completo</label>
+              <input type="text" id="perfil-nombre" class="form-control" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label>Usuario</label>
+              <input type="text" id="perfil-usuario" class="form-control" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label>Rol Asignado</label>
+              <input type="text" id="perfil-rol" class="form-control" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label>Regional / Sede</label>
+              <input type="text" id="perfil-regional-sede" class="form-control" readonly>
+            </div>
+            <button class="btn btn-outline" onclick="handleLogout()" style="width: 100%; margin-top: 10px;">Cerrar Sesión Activa</button>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODALES DIALOGS
+       ======================================================================== -->
+
+  <!-- Modal 1: Reporte por WhatsApp -->
+  <div class="modal-overlay" id="modal-whatsapp">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #25D366;">💬</span>
+          Enviar Reporte por WhatsApp
+        </h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-whatsapp')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label>Número de WhatsApp Destinatario (con código de país)</label>
+          <input type="tel" id="wa-input-phone" class="form-control" value="573100000000">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label>Vista previa del mensaje generado automáticamente:</label>
+          <textarea id="wa-preview-text" class="form-control" style="height: 240px; font-family: monospace; font-size: 12.5px; background: #fdfcf9;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="cerrarModal('modal-whatsapp')">Cancelar</button>
+        <button class="btn btn-whatsapp" onclick="lanzarWhatsApp()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.698c.969.584 1.761.854 2.796.855 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.589-5.766-5.768-5.766z"/></svg>
+          Abrir en WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Anular Registro -->
+  <div class="modal-overlay" id="modal-anular">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header" style="background: var(--danger);">
+        <h3>Confirmar Anulación de Registro</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-anular')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13.5px; margin-bottom: 14px;">
+          ¿Está seguro de anular el registro <strong id="anular-consecutivo-label">CAF-XXXX</strong>? Esta acción no borra físicamente el registro, pero lo marca como anulado con trazabilidad en auditoría.
+        </p>
+        <div class="form-group">
+          <label>Motivo de la anulación *</label>
+          <textarea id="anular-motivo-input" class="form-control" placeholder="Especifique el motivo de anulación..." required style="height: 80px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="cerrarModal('modal-anular')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmarAnulacionRegistro()">Anular Registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Nuevo Auxiliar -->
+  <div class="modal-overlay" id="modal-nuevo-auxiliar">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Registrar Nuevo Auxiliar de Cafetería</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-nuevo-auxiliar')">✕</button>
+      </div>
+      <form onsubmit="guardarNuevoAuxiliar(event)">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Nombres y Apellidos *</label>
+            <input type="text" id="modal-aux-nombre" class="form-control" required placeholder="Nombre completo">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Cédula / Documento</label>
+            <input type="text" id="modal-aux-doc" class="form-control" placeholder="Número de identificación">
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="tel" id="modal-aux-tel" class="form-control" placeholder="3000000000">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="cerrarModal('modal-nuevo-auxiliar')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Auxiliar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Nuevo Coordinador -->
+  <div class="modal-overlay" id="modal-nuevo-coordinador">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Registrar Coordinador Oficial</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-nuevo-coordinador')">✕</button>
+      </div>
+      <form onsubmit="guardarNuevoCoordinador(event)">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Nombres y Apellidos *</label>
+            <input type="text" id="modal-coord-nombre" class="form-control" required placeholder="Ej: Zaider Buitrago">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Celular / WhatsApp *</label>
+            <input type="tel" id="modal-coord-celular" class="form-control" required placeholder="3100000000">
+          </div>
+          <div class="form-group">
+            <label>Regional</label>
+            <select id="modal-coord-regional" class="form-control">
+              <option value="1">Regional Quindío</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="cerrarModal('modal-nuevo-coordinador')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Nueva Tarifa Anual -->
+  <div class="modal-overlay" id="modal-nueva-tarifa">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>Configurar Tarifa Anual de Cafetería</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-nueva-tarifa')">✕</button>
+      </div>
+      <form onsubmit="guardarNuevaTarifa(event)">
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label>Año de Vigencia *</label>
+              <input type="number" id="modal-tarifa-anio" class="form-control" value="2026" required min="2020" max="2050">
+            </div>
+            <div class="form-group">
+              <label>Regional *</label>
+              <select id="modal-tarifa-regional" class="form-control" required>
+                <option value="1">Regional Quindío</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Sede Específica (Dejar en blanco si aplica a toda la regional)</label>
+            <select id="modal-tarifa-sede" class="form-control">
+              <option value="">Aplica a todas las sedes de la regional</option>
+            </select>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Valor Hora Diurna ($ COP) *</label>
+              <input type="number" id="modal-tarifa-diurna" class="form-control" value="5900" required step="50">
+            </div>
+            <div class="form-group">
+              <label>Valor Hora Nocturna ($ COP) *</label>
+              <input type="number" id="modal-tarifa-nocturna" class="form-control" value="7500" required step="50">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="cerrarModal('modal-nueva-tarifa')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Tarifa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- SCRIPT FRONTEND -->
+  <script src="js/app.js"></script>
+</body>
+</html>
