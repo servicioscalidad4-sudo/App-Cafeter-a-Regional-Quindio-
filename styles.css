@@ -39,15 +39,25 @@ body {
   min-height: 100vh;
   display: flex;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
+
+html { overflow-x: hidden; }
+img, svg, canvas { max-width: 100%; }
+.main-wrapper { min-width: 0; }
+.page-title { min-width: 0; }
+.page-title h1, .page-title p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-control { width: 100%; min-width: 0; }
+textarea.form-control { height: auto; }
 
 /* --------------------------------------------------------------------------
    LAYOUT PRINCIPAL
    -------------------------------------------------------------------------- */
 #app-layout {
   display: flex;
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Sidebar */
@@ -606,7 +616,8 @@ body {
    -------------------------------------------------------------------------- */
 .auth-wrapper {
   min-height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -713,19 +724,120 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   RESPONSIVE DESIGN (Móviles y Tablets)
+   RESPONSIVE DESIGN: PC (>1200) · Tablet (641-992) · Móvil (<=640)
    -------------------------------------------------------------------------- */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 4, 20, 0.55);
+  z-index: 90;
+}
+.sidebar { height: 100dvh; }
+
+/* Pantallas muy grandes: contenido centrado y cómodo */
+@media (min-width: 1500px) {
+  .content-body { max-width: 1500px; width: 100%; margin: 0 auto; }
+}
+
+/* ---------- Tablet y menores: menú lateral deslizable ---------- */
 @media (max-width: 992px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .main-wrapper {
-    margin-left: 0;
-  }
+  .sidebar { transform: translateX(-100%); width: min(290px, 85vw); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.show { display: block; }
+  .main-wrapper { margin-left: 0; }
   .btn-menu-toggle {
-    display: block;
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: var(--radius-sm);
+    background: var(--gold-light); color: var(--primary);
   }
+  .topbar { padding: 0 16px; }
+  .content-body { padding: 18px; }
+
+  /* Rejillas definidas en línea -> se adaptan */
+  [style*="grid-template-columns: 2fr 1fr"]:not(.filter-grid) { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns: 1fr 1fr 1fr"]:not(.filter-grid) { grid-template-columns: 1fr 1fr !important; }
+  [style*="repeat(4, 1fr)"] { grid-template-columns: 1fr 1fr !important; }
+  [style*="max-width: 950px"], [style*="max-width: 600px"] { max-width: 100% !important; }
+
+  .table-header { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+  .data-table { min-width: 680px; }
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+}
+
+/* ---------- Móvil ---------- */
+@media (max-width: 640px) {
+  :root { --header-height: 60px; }
+
+  .topbar { padding: 0 10px; gap: 8px; }
+  .topbar-left { gap: 8px; min-width: 0; flex: 1; }
+  .page-title h1 { font-size: 15px; }
+  .page-title p { display: none; }
+  .regional-pill { display: none; }
+  .topbar-right { gap: 8px; flex-shrink: 0; }
+  .topbar-right .btn { height: 40px; padding: 0 12px; font-size: 12.5px; }
+  .topbar-right .btn .btn-label { display: none; }
+
+  .content-body { padding: 12px; }
+
+  /* Todo en una sola columna */
+  [style*="grid-template-columns"]:not(.filter-grid):not(.kpi-grid) { grid-template-columns: 1fr !important; gap: 12px !important; }
+  [style*="repeat(4, 1fr)"] { grid-template-columns: 1fr 1fr !important; }
+  .filter-grid { grid-template-columns: 1fr !important; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi-card { padding: 14px 12px; flex-direction: column-reverse; align-items: flex-start; gap: 8px; }
+  .kpi-info h3 { font-size: 17px; }
+  .kpi-icon { width: 36px; height: 36px; }
+
+  /* Evitar zoom automático de iOS y dedos cómodos */
+  .form-control, select.form-control, input.form-control { font-size: 16px; height: 46px; }
+  textarea.form-control { font-size: 16px; }
+  .btn { height: 46px; }
+  .btn-sm { height: 36px; }
+
+  /* Botones de acción apilados a lo ancho */
+  [style*="justify-content: flex-end"] { flex-wrap: wrap; }
+  [style*="justify-content: flex-end"] > .btn { flex: 1 1 140px; }
+  [style*="justify-content: space-between"] { flex-wrap: wrap; gap: 10px !important; }
+  .table-card[style*="padding"] { padding: 14px !important; }
+  [style*="width: 140px"] { width: 100% !important; }
+
+  .table-header h3 { font-size: 14px; }
+  .data-table { font-size: 12px; min-width: 620px; }
+  .data-table th, .data-table td { padding: 10px 10px; }
+
+  /* Modales: ocupan casi toda la pantalla */
+  .modal-overlay { padding: 8px; align-items: flex-end; }
+  .modal-card { max-width: 100% !important; max-height: 94vh; max-height: 94dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .modal-header { padding: 14px 16px; }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 12px 16px; flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1 1 120px; }
+
+  /* Notificaciones */
+  .toast-container { left: 10px; right: 10px; bottom: 10px; }
+  .toast { min-width: 0; width: 100%; }
+
+  /* Login */
+  .auth-wrapper { padding: 10px; align-items: flex-start; }
+  .auth-card { margin: 10px auto; }
+  .auth-header { padding: 22px 16px 14px; }
+  .auth-body { padding: 16px; }
+}
+
+/* Móviles muy pequeños */
+@media (max-width: 380px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  [style*="repeat(4, 1fr)"] { grid-template-columns: 1fr !important; }
+}
+
+/* Móvil horizontal: modales con scroll */
+@media (max-height: 520px) {
+  .modal-card { max-height: 98vh; }
+  .auth-wrapper { align-items: flex-start; }
+}
+
+@media print {
+  .sidebar, .topbar, .toast-container, .btn { display: none !important; }
+  .main-wrapper { margin-left: 0; }
 }
