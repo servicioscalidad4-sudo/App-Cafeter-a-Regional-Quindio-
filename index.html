@@ -83,16 +83,17 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Sede Principal</label>
+              <label>Sede *</label>
               <select id="reg-sede" class="form-control" required>
                 <!-- populated dynamically -->
               </select>
             </div>
           </div>
-          <div class="form-group" style="margin-bottom: 18px;">
-            <label>Cargo o Rol</label>
-            <input type="text" id="reg-cargo" class="form-control" placeholder="Ej: Coordinador de Servicios">
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label>Cargo</label>
+            <input type="text" id="reg-cargo" class="form-control" placeholder="Ej: Auxiliar administrativo">
           </div>
+          <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 14px;">Tu acceso será de tipo <strong>SEDE</strong>: solo podrás registrar, ver y corregir los servicios de la sede que elijas. El rol de Coordinador o Administrador lo asigna el administrador.</p>
           <button type="submit" class="btn btn-gold" style="width: 100%;">
             Crear mi Acceso e Ingresar
           </button>
@@ -133,7 +134,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Consultar Registros
         </a>
-        <a class="nav-item" onclick="navigateTo('sedes')">
+        <a class="nav-item todas-sedes" onclick="navigateTo('sedes')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           Sedes y Regionales
         </a>
@@ -249,7 +250,7 @@
                   <option value="12">Diciembre</option>
                 </select>
               </div>
-              <div class="form-group admin-only">
+              <div class="form-group todas-sedes">
                 <label>Sede</label>
                 <select id="dash-filter-sede" class="form-control" onchange="loadDashboardStats()">
                   <option value="">Todas las Sedes</option>
