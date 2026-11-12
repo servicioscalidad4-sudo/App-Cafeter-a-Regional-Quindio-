@@ -671,12 +671,24 @@ function navigateTo(section) {
 
   if (window.innerWidth <= 992) {
     document.getElementById('sidebar').classList.remove('open');
+    const ov = document.getElementById('sidebar-overlay');
+    if (ov) ov.classList.remove('show');
   }
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const abierto = document.getElementById('sidebar').classList.toggle('open');
+  const ov = document.getElementById('sidebar-overlay');
+  if (ov) ov.classList.toggle('show', abierto);
 }
+
+// Al girar o agrandar la pantalla, cerrar el menú móvil
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 992) {
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('show');
+  }
+});
 
 // ============================================================================
 // CATÁLOGOS MAESTROS (SEDES, COORD, AUX)
