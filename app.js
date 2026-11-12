@@ -93,7 +93,7 @@ function calcularHorasYTurnoClient(hInStr, hOutStr) {
     let curr = tIn;
     for (let i = 0; i < totalMins; i++) {
       let mod = curr % 1440;
-      if (mod >= 360 && mod < 1260) dayMins++;
+      if (mod >= 360 && mod < 1140) dayMins++; // Diurno 6:00 a.m. - 7:00 p.m. | Nocturno 7:00 p.m. - 6:00 a.m.
       else nightMins++;
       curr++;
     }
@@ -126,6 +126,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarVistaAuth();
   }
 });
+
+
+// ============================================================================
+// CREAR ACCESO / LOGIN DE USUARIOS (Google Sheets + respaldo local)
+// ============================================================================
+async function sha256Hex(texto) {
+  const data = new TextEncoder().encode('RenacerCafeteria_Local_2026' + texto);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function getLocalUsers() {
+  try { return JSON.parse(localStorage.getItem('jr_client_users') || '[]'); } catch (e) { return []; }
+}
+function saveLocalUsers(list) { localStorage.setItem('jr_client_users', JSON.stringify(list)); }
+
+// POST como text/plain: evita el preflight CORS y permite leer la respuesta de Apps Script
+async function llamarSheets(payload) {
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return await res.json();
+}
+
+function usuarioDesdeSheets(u, usuarioFallback) {
+  return {
+    id: u.id, usuario: u.usuario || usuarioFallback, nombre_completo: u.nombre, correo: u.correo,
+    rol: u.rol || 'COORDINADOR', regional_id: 1, sede_id: u.sede_id || 1, cargo: u.cargo || ''
+  };
+}
+
+async function crearAccesoUsuario(body) {
+  const usuario = (body.usuario || '').trim().toLowerCase();
+  const correo = (body.correo || '').trim().toLowerCase();
+  if (['admin', 'coordinador'].includes(usuario)) return { success: false, error: 'Ese usuario ya existe. Elige otro.' };
+
+  const locales = getLocalUsers();
+  if (locales.some(u => u.usuario === usuario || u.correo === correo)) {
+    return { success: false, error: 'Ese usuario o correo ya está registrado.' };
+  }
+
+  // 1) Guardar en Google Sheets (hoja Usuarios) con estado "activo"
+  try {
+    const r = await llamarSheets({ action: 'register', ...body, usuario, correo });
+    if (r && r.success) return { success: true, user: usuarioDesdeSheets(r.user, usuario), remoto: true };
+    if (r && r.error) return { success: false, error: r.error };
+  } catch (e) { console.warn('Sheets no disponible, se guarda localmente', e); }
+
+  // 2) Respaldo local en este navegador
+  const hash = await sha256Hex(body.password);
+  const nuevo = {
+    id: 1000 + locales.length + 1, usuario, correo, hash, nombre_completo: body.nombre,
+    rol: 'COORDINADOR', regional_id: 1, sede_id: Number(body.sede_id) || 1, cargo: body.cargo || ''
+  };
+  locales.push(nuevo);
+  saveLocalUsers(locales);
+  const { hash: _h, ...user } = nuevo;
+  return { success: true, user, remoto: false };
+}
+
+async function loginUsuarioCreado(usuarioIn, password) {
+  const usuario = (usuarioIn || '').trim().toLowerCase();
+  const hash = await sha256Hex(password);
+  const local = getLocalUsers().find(u => (u.usuario === usuario || u.correo === usuario) && u.hash === hash);
+  if (local) { const { hash: _h, ...user } = local; return { success: true, token: 'local-token-' + Date.now(), user }; }
+
+  try {
+    const r = await llamarSheets({ action: 'login', usuario, password });
+    if (r && r.success) return { success: true, token: 'sheets-token-' + Date.now(), user: usuarioDesdeSheets(r.user, usuario) };
+    if (r && r.error) return { success: false, error: r.error };
+  } catch (e) { console.warn('Login remoto no disponible', e); }
+  return { success: false, error: 'Credenciales inválidas.' };
+}
 
 // ============================================================================
 // SERVICIOS API (HÍBRIDO: SERVIDOR LOCAL O MODO GITHUB PAGES)
@@ -179,7 +254,7 @@ function procesarSolicitudCliente(endpoint, method, body) {
       };
       return { success: true, token: 'gh-coord-token-' + Date.now(), user };
     }
-    return { success: false, error: 'Credenciales inválidas. Usa admin / admin123 o coordinador / coord123' };
+    return loginUsuarioCreado(body.usuario, pass);
   }
 
   // 3. Catálogos
@@ -365,8 +440,42 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
-  showToast('Solicitud enviada para aprobación del administrador', 'success');
-  switchAuthTab('login');
+  const btn = e.target.querySelector('button[type="submit"]');
+  const textoBtn = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = 'Creando acceso...';
+
+  const body = {
+    nombre: document.getElementById('reg-nombre').value.trim(),
+    correo: document.getElementById('reg-correo').value.trim(),
+    celular: document.getElementById('reg-celular').value.trim(),
+    usuario: document.getElementById('reg-usuario').value.trim(),
+    password: document.getElementById('reg-password').value,
+    sede_id: document.getElementById('reg-sede').value,
+    sede: document.getElementById('reg-sede').selectedOptions[0]?.text || '',
+    regional: document.getElementById('reg-regional').selectedOptions[0]?.text || 'Regional Quindío',
+    cargo: document.getElementById('reg-cargo').value.trim()
+  };
+
+  const res = await crearAccesoUsuario(body);
+  btn.disabled = false;
+  btn.innerText = textoBtn;
+
+  if (!res.success) {
+    showToast(res.error || 'No se pudo crear el acceso', 'danger');
+    return;
+  }
+
+  // Ingreso automático con la cuenta recién creada
+  const login = await loginUsuarioCreado(body.usuario, body.password);
+  const user = login.success ? login.user : res.user;
+  state.token = login.success ? login.token : 'local-token-' + Date.now();
+  state.user = user;
+  localStorage.setItem('jr_cafeteria_token', state.token);
+  localStorage.setItem('jr_cafeteria_user', JSON.stringify(user));
+  e.target.reset();
+  showToast('¡Acceso creado! Bienvenido(a) ' + user.nombre_completo, 'success');
+  await inicializarApp();
 }
 
 function handleLogout() {
@@ -439,7 +548,7 @@ function navigateTo(section) {
     tarifas: { title: 'Tarifas y Valores Anuales', subtitle: 'Configuración de tarifas hora diurna y nocturna' },
     reportes: { title: 'Reportes y Consolidados', subtitle: 'Descarga y exportación de estados financieros' },
     auditoria: { title: 'Auditoría y Trazabilidad', subtitle: 'Registro cronológico inmutable de cambios y operaciones' },
-    usuarios: { title: 'Usuarios del Sistema', subtitle: 'Aprobación de cuentas y administración de roles' },
+    usuarios: { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y roles' },
     perfil: { title: 'Mi Perfil', subtitle: 'Información de la cuenta en sesión' }
   };
 
