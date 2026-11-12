@@ -8,6 +8,7 @@ const isGitHubPages = window.location.hostname.includes('github.io') || window.l
 
 // Estado Global
 let state = {
+  sheetsToken: localStorage.getItem('jr_sheets_token') || null,
   token: localStorage.getItem('jr_cafeteria_token') || null,
   user: JSON.parse(localStorage.getItem('jr_cafeteria_user') || 'null'),
   currentSection: 'dashboard',
@@ -63,6 +64,22 @@ const DEFAULT_TARIFAS = [
   { id: 1, anio: 2026, regional_id: 1, regional_nombre: 'Regional Quindío', sede_nombre: 'Todas las Sedes', valor_hora_diurna: 5900, valor_hora_nocturna: 7500, vigencia_desde: '2026-01-01', vigencia_hasta: '2026-12-31', activo: 1 },
   { id: 2, anio: 2027, regional_id: 1, regional_nombre: 'Regional Quindío', sede_nombre: 'Todas las Sedes', valor_hora_diurna: 5900, valor_hora_nocturna: 7500, vigencia_desde: '2027-01-01', vigencia_hasta: '2027-12-31', activo: 1 }
 ];
+
+// ============================================================================
+// ROLES: ADMINISTRADOR (todo) | COORDINADOR (ve todas las sedes) | SEDE (solo su sede)
+// ============================================================================
+function esRolSede() { return !!state.user && state.user.rol === 'SEDE'; }
+function veTodasLasSedes() { return !!state.user && ['ADMINISTRADOR', 'COORDINADOR'].includes(state.user.rol); }
+function sedeIdPorNombre(nombre) {
+  return (DEFAULT_SEDES.find(s => s.nombre === nombre) || {}).id;
+}
+function filtrarPorRol(regs) {
+  if (esRolSede()) return regs.filter(r => r.sede_id == state.user.sede_id);
+  return regs;
+}
+function puedeGestionarRegistro(r) {
+  return !esRolSede() || r.sede_id == state.user.sede_id;
+}
 
 function getClientRegistros() {
   const data = localStorage.getItem('jr_client_registros');
@@ -155,8 +172,22 @@ async function llamarSheets(payload) {
 function usuarioDesdeSheets(u, usuarioFallback) {
   return {
     id: u.id, usuario: u.usuario || usuarioFallback, nombre_completo: u.nombre, correo: u.correo,
-    rol: u.rol || 'COORDINADOR', regional_id: 1, sede_id: u.sede_id || 1, cargo: u.cargo || ''
+    rol: String(u.rol || 'SEDE').toUpperCase(), regional_id: 1,
+    sede_id: sedeIdPorNombre(u.sede) || u.sede_id || 1, sede_nombre: u.sede || '', cargo: u.cargo || ''
   };
+}
+
+// Token de sesión de Google Sheets (necesario para administrar usuarios)
+async function obtenerTokenSheets(tokenYa, usuario, password) {
+  let t = tokenYa || null;
+  if (!t) {
+    try {
+      const r = await llamarSheets({ action: 'login', usuario, password });
+      if (r && r.success) t = r.token;
+    } catch (e) {}
+  }
+  state.sheetsToken = t;
+  if (t) localStorage.setItem('jr_sheets_token', t); else localStorage.removeItem('jr_sheets_token');
 }
 
 async function crearAccesoUsuario(body) {
@@ -180,7 +211,7 @@ async function crearAccesoUsuario(body) {
   const hash = await sha256Hex(body.password);
   const nuevo = {
     id: 1000 + locales.length + 1, usuario, correo, hash, nombre_completo: body.nombre,
-    rol: 'COORDINADOR', regional_id: 1, sede_id: Number(body.sede_id) || 1, cargo: body.cargo || ''
+    rol: 'SEDE', regional_id: 1, sede_id: Number(body.sede_id) || 1, sede_nombre: body.sede || '', cargo: body.cargo || ''
   };
   locales.push(nuevo);
   saveLocalUsers(locales);
@@ -196,7 +227,7 @@ async function loginUsuarioCreado(usuarioIn, password) {
 
   try {
     const r = await llamarSheets({ action: 'login', usuario, password });
-    if (r && r.success) return { success: true, token: 'sheets-token-' + Date.now(), user: usuarioDesdeSheets(r.user, usuario) };
+    if (r && r.success) return { success: true, token: 'sheets-token-' + Date.now(), sheetsToken: r.token, user: usuarioDesdeSheets(r.user, usuario) };
     if (r && r.error) return { success: false, error: r.error };
   } catch (e) { console.warn('Login remoto no disponible', e); }
   return { success: false, error: 'Credenciales inválidas.' };
@@ -282,7 +313,9 @@ function procesarSolicitudCliente(endpoint, method, body) {
 
   // 5. Dashboard Stats
   if (endpoint.startsWith('/api/dashboard/stats')) {
-    const regs = getClientRegistros();
+    let regs = filtrarPorRol(getClientRegistros());
+    const qSede = (endpoint.match(/sede_id=(\d+)/) || [])[1];
+    if (qSede) regs = regs.filter(r => r.sede_id == qSede);
     const totalServicios = regs.length;
     let totalGasto = 0, totalHoras = 0, hDiurnas = 0, hNocturnas = 0;
     let sedesCount = {};
@@ -312,7 +345,7 @@ function procesarSolicitudCliente(endpoint, method, body) {
 
   // 6. Registros CRUD
   if (endpoint.startsWith('/api/registros') && method === 'GET') {
-    const regs = getClientRegistros();
+    const regs = filtrarPorRol(getClientRegistros());
     return {
       data: regs,
       pagination: { total: regs.length, page: 1, limit: 25, pages: 1 }
@@ -321,7 +354,8 @@ function procesarSolicitudCliente(endpoint, method, body) {
 
   if (endpoint === '/api/registros' && method === 'POST') {
     const regs = getClientRegistros();
-    const nextId = regs.length + 1;
+    if (esRolSede()) body.sede_id = state.user.sede_id; // la sede NO se puede cambiar
+    const nextId = regs.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
     const anio = (body.fecha || '').substring(0, 4) || '2026';
     const consecutivo = `CAF-${anio}-${('00000' + nextId).slice(-5)}`;
     const calc = calcularHorasYTurnoClient(body.hora_ingreso, body.hora_salida);
@@ -336,6 +370,7 @@ function procesarSolicitudCliente(endpoint, method, body) {
       regional_nombre: 'Regional Quindío',
       sede_nombre: DEFAULT_SEDES.find(s => s.id == body.sede_id)?.nombre || 'Armenia',
       coordinador_nombre: DEFAULT_COORDINADORES.find(c => c.id == body.coordinador_id)?.nombres || 'Coordinador',
+      usuario_creador: state.user ? state.user.usuario : '',
       estado: 'activo'
     };
 
@@ -348,11 +383,37 @@ function procesarSolicitudCliente(endpoint, method, body) {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'saveRegistro', ...nuevo })
+        body: JSON.stringify({ action: 'saveRegistro', ...nuevo, sede: nuevo.sede_nombre })
       });
     } catch (e) {}
 
     return { success: true, consecutivo, valor_a_pagar: vTotal, id: nextId };
+  }
+
+  // 6b. Corregir (editar) registro
+  if (/^\/api\/registros\/\d+$/.test(endpoint) && method === 'PUT') {
+    const id = endpoint.split('/')[3];
+    const regs = getClientRegistros();
+    const idx = regs.findIndex(r => r.id == id);
+    if (idx < 0) return { success: false, error: 'Registro no encontrado.' };
+    if (!puedeGestionarRegistro(regs[idx])) return { success: false, error: 'No tienes permiso para modificar registros de otra sede.' };
+    if (esRolSede()) body.sede_id = state.user.sede_id;
+    const calc = calcularHorasYTurnoClient(body.hora_ingreso, body.hora_salida);
+    const vTotal = Math.round((calc.horas_diurnas * 5900) + (calc.horas_nocturnas * 7500));
+    const actualizado = {
+      ...regs[idx], ...body, ...calc, valor_a_pagar: vTotal,
+      sede_nombre: DEFAULT_SEDES.find(s => s.id == body.sede_id)?.nombre || regs[idx].sede_nombre,
+      coordinador_nombre: DEFAULT_COORDINADORES.find(c => c.id == body.coordinador_id)?.nombres || regs[idx].coordinador_nombre
+    };
+    regs[idx] = actualizado;
+    saveClientRegistros(regs);
+    try {
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateRegistro', ...actualizado, sede: actualizado.sede_nombre })
+      });
+    } catch (e) {}
+    return { success: true, consecutivo: actualizado.consecutivo, valor_a_pagar: vTotal, id: actualizado.id };
   }
 
   // 7. Anular Registro
@@ -360,6 +421,7 @@ function procesarSolicitudCliente(endpoint, method, body) {
     const id = endpoint.split('/')[3];
     const regs = getClientRegistros();
     const target = regs.find(r => r.id == id);
+    if (target && !puedeGestionarRegistro(target)) return { success: false, error: 'No tienes permiso para anular registros de otra sede.' };
     if (target) {
       target.estado = 'anulado';
       saveClientRegistros(regs);
@@ -431,6 +493,7 @@ async function handleLogin(e) {
     state.user = res.user;
     localStorage.setItem('jr_cafeteria_token', res.token);
     localStorage.setItem('jr_cafeteria_user', JSON.stringify(res.user));
+    await obtenerTokenSheets(res.sheetsToken, usuario, password);
     showToast('Bienvenido a Jardines del Renacer', 'success');
     await inicializarApp();
   } else {
@@ -473,6 +536,7 @@ async function handleRegister(e) {
   state.user = user;
   localStorage.setItem('jr_cafeteria_token', state.token);
   localStorage.setItem('jr_cafeteria_user', JSON.stringify(user));
+  await obtenerTokenSheets(login.sheetsToken, body.usuario, body.password);
   e.target.reset();
   showToast('¡Acceso creado! Bienvenido(a) ' + user.nombre_completo, 'success');
   await inicializarApp();
@@ -483,6 +547,8 @@ function handleLogout() {
   state.user = null;
   localStorage.removeItem('jr_cafeteria_token');
   localStorage.removeItem('jr_cafeteria_user');
+  localStorage.removeItem('jr_sheets_token');
+  state.sheetsToken = null;
   mostrarVistaAuth();
   showToast('Sesión cerrada correctamente', 'warning');
 }
@@ -504,17 +570,21 @@ async function inicializarApp() {
   mostrarVistaApp();
 
   document.getElementById('sidebar-user-name').innerText = state.user.nombre_completo;
-  document.getElementById('sidebar-user-role').innerText = state.user.rol;
+  document.getElementById('sidebar-user-role').innerText = state.user.rol === 'SEDE' ? ('SEDE · ' + (sedeNombreUsuario() || '')) : state.user.rol;
   document.getElementById('sidebar-user-avatar').innerText = state.user.nombre_completo.substring(0, 2).toUpperCase();
 
   document.getElementById('perfil-nombre').value = state.user.nombre_completo;
   document.getElementById('perfil-usuario').value = state.user.usuario;
   document.getElementById('perfil-rol').value = state.user.rol;
-  document.getElementById('perfil-regional-sede').value = 'Regional Quindío';
+  document.getElementById('perfil-regional-sede').value = 'Regional Quindío' + (esRolSede() ? ' / Sede ' + sedeNombreUsuario() : ' / Todas las sedes');
 
   const esAdmin = state.user.rol === 'ADMINISTRADOR';
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = esAdmin ? '' : 'none';
+  });
+  // Elementos solo para Administrador y Coordinador (ven todas las sedes)
+  document.querySelectorAll('.todas-sedes').forEach(el => {
+    el.style.display = veTodasLasSedes() ? '' : 'none';
   });
 
   await Promise.all([
@@ -523,13 +593,33 @@ async function inicializarApp() {
     cargarAuxiliares()
   ]);
 
+  aplicarRestriccionSede();
   navigateTo('dashboard');
 }
 
-// ============================================================================
-// NAVEGACIÓN Y ENRUTAMIENTO
+function sedeNombreUsuario() {
+  if (!state.user) return '';
+  return state.user.sede_nombre || (DEFAULT_SEDES.find(s => s.id == state.user.sede_id) || {}).nombre || '';
+}
+
+// Usuario de SEDE: su sede queda fija en formulario, filtros y dashboard
+function aplicarRestriccionSede() {
+  if (!esRolSede()) {
+    ['reg-form-sede', 'filtro-sede', 'dash-filter-sede'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+    return;
+  }
+  ['reg-form-sede', 'filtro-sede', 'dash-filter-sede'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = state.user.sede_id;
+    el.disabled = true;
+  });
+}
 // ============================================================================
 function navigateTo(section) {
+  const soloAdmin = ['coordinadores', 'tarifas', 'auditoria', 'usuarios'];
+  if (soloAdmin.includes(section) && state.user.rol !== 'ADMINISTRADOR') section = 'dashboard';
+  if (section === 'sedes' && esRolSede()) section = 'dashboard';
   state.currentSection = section;
 
   document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -598,6 +688,7 @@ function poblarSelectSedes() {
 
   const regSede = document.getElementById('reg-form-sede');
   if (regSede) regSede.innerHTML = optionsHtml;
+  if (state.user) aplicarRestriccionSede();
 }
 
 async function cargarCoordinadores() {
@@ -677,7 +768,7 @@ async function loadDashboardStats() {
 function resetDashboardFilters() {
   document.getElementById('dash-filter-anio').value = '2026';
   document.getElementById('dash-filter-mes').value = '';
-  document.getElementById('dash-filter-sede').value = '';
+  document.getElementById('dash-filter-sede').value = esRolSede() ? state.user.sede_id : '';
   loadDashboardStats();
 }
 
@@ -783,10 +874,19 @@ async function guardarRegistroCafeteria(e) {
     obs_admon: document.getElementById('reg-form-obs').value
   };
 
-  const res = await apiRequest('/api/registros', 'POST', payload);
+  const editId = state.editandoId;
+  const res = editId
+    ? await apiRequest(`/api/registros/${editId}`, 'PUT', payload)
+    : await apiRequest('/api/registros', 'POST', payload);
   btn.disabled = false;
   btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar Servicio de Cafetería`;
 
+  if (res.success && editId) {
+    showToast(`Registro ${res.consecutivo} corregido correctamente`, 'success');
+    limpiarFormularioRegistro();
+    navigateTo('consultas');
+    return;
+  }
   if (res.success) {
     showToast(`Servicio registrado exitosamente: ${res.consecutivo}`, 'success');
 
@@ -807,7 +907,30 @@ async function guardarRegistroCafeteria(e) {
   }
 }
 
+async function editarRegistro(id) {
+  const res = await apiRequest('/api/registros?page=1&limit=1000');
+  const r = (res.data || []).find(x => x.id == id);
+  if (!r) { showToast('Registro no encontrado', 'danger'); return; }
+  if (!puedeGestionarRegistro(r)) { showToast('Solo puedes corregir registros de tu sede', 'danger'); return; }
+
+  navigateTo('registro');
+  state.editandoId = r.id;
+  document.getElementById('reg-form-fecha').value = r.fecha;
+  document.getElementById('reg-form-sede').value = r.sede_id;
+  document.getElementById('reg-form-auxiliar').value = r.auxiliar_nombre;
+  document.getElementById('reg-form-prestacion').value = r.prestacion;
+  document.getElementById('reg-form-fallecido').value = r.nombre_fallecido;
+  document.getElementById('reg-form-hora-in').value = r.hora_ingreso;
+  document.getElementById('reg-form-hora-out').value = r.hora_salida;
+  if (r.coordinador_id) document.getElementById('reg-form-coordinador').value = r.coordinador_id;
+  document.getElementById('reg-form-obs').value = r.obs_admon || '';
+  document.getElementById('btn-submit-registro').innerText = 'Guardar Cambios (' + r.consecutivo + ')';
+  recalcularTarifasEnVivo();
+  showToast('Editando ' + r.consecutivo, 'info');
+}
+
 function limpiarFormularioRegistro() {
+  state.editandoId = null;
   document.getElementById('reg-form-prestacion').value = '';
   document.getElementById('reg-form-fallecido').value = '';
   document.getElementById('reg-form-obs').value = '';
@@ -873,7 +996,8 @@ async function cargarRegistros(page = 1) {
         <button class="btn btn-whatsapp btn-sm" onclick='prepararWhatsAppDesdeFila(${JSON.stringify(r)})' title="Enviar reporte por WhatsApp">
           💬 WA
         </button>
-        ${r.estado === 'activo' ? `
+        ${r.estado === 'activo' && puedeGestionarRegistro(r) ? `
+          <button class="btn btn-outline btn-sm" onclick="editarRegistro(${r.id})" title="Corregir registro">✏️ Corregir</button>
           <button class="btn btn-outline btn-sm" onclick="solicitarAnulacionRegistro(${r.id}, '${r.consecutivo}')" title="Anular Registro" style="color: var(--danger); border-color: #fca5a5;">
             Anular
           </button>
@@ -887,7 +1011,7 @@ function cambiarPagina(delta) {}
 
 function limpiarFiltrosConsulta() {
   document.getElementById('filtro-search').value = '';
-  document.getElementById('filtro-sede').value = '';
+  document.getElementById('filtro-sede').value = esRolSede() ? state.user.sede_id : '';
   document.getElementById('filtro-coordinador').value = '';
   document.getElementById('filtro-turno').value = '';
   document.getElementById('filtro-estado').value = 'activo';
@@ -994,7 +1118,7 @@ async function confirmarAnulacionRegistro() {
 // EXPORTACIÓN EXCEL CSV EN EL NAVEGADOR
 // ============================================================================
 function descargarExcelCSV() {
-  const regs = getClientRegistros();
+  const regs = filtrarPorRol(getClientRegistros());
   const csvLines = ['\ufeff"CONSECUTIVO";"FECHA";"REGIONAL";"SEDE";"AUXILIAR";"FALLECIDO";"PRESTACION";"INGRESO";"SALIDA";"TOTAL HORAS";"TURNO";"VALOR A PAGAR";"ESTADO"'];
   regs.forEach(r => {
     csvLines.push(`"${r.consecutivo}";"${r.fecha}";"Regional Quindío";"${r.sede_nombre}";"${r.auxiliar_nombre}";"${r.nombre_fallecido}";"${r.prestacion}";"${r.hora_ingreso}";"${r.hora_salida}";"${r.total_horas}";"${r.turno}";"${r.valor_a_pagar}";"${r.estado}"`);
@@ -1127,21 +1251,65 @@ async function cargarAuditoria() {
 }
 
 async function cargarUsuarios() {
-  const res = await apiRequest('/api/auth/users');
   const tbody = document.getElementById('tabla-usuarios-body');
-  if (tbody && res.usuarios) {
-    tbody.innerHTML = res.usuarios.map(u => `
-      <tr>
-        <td><strong>${u.nombre_completo}</strong></td>
-        <td>${u.usuario}</td>
-        <td>${u.correo}</td>
-        <td><span class="badge badge-mixto">${u.rol}</span></td>
-        <td>Regional Quindío</td>
-        <td><span class="badge badge-activo">${u.estado}</span></td>
-        <td><span style="color:var(--text-muted); font-size:12px;">Activo</span></td>
-      </tr>
-    `).join('');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Cargando usuarios...</td></tr>';
+
+  let filas = [];
+  let desdeSheets = false;
+  if (state.sheetsToken) {
+    try {
+      const r = await llamarSheets({ action: 'listUsers', token: state.sheetsToken });
+      if (r && r.success) {
+        desdeSheets = true;
+        filas = r.usuarios.map(u => ({ origen: 'sheets', nombre: u.nombre, usuario: u.usuario, correo: u.correo, rol: u.rol, sede: u.sede, estado: u.estado }));
+      } else if (r && r.error) {
+        showToast(r.error, 'warning');
+      }
+    } catch (e) { console.warn(e); }
   }
+  if (!desdeSheets) {
+    filas.push({ origen: 'demo', nombre: 'Administrador Central', usuario: 'admin', correo: 'admin@jardinesdelrenacer.com', rol: 'ADMINISTRADOR', sede: 'Armenia', estado: 'activo' });
+    filas.push({ origen: 'demo', nombre: 'Coordinador Armenia', usuario: 'coordinador', correo: 'coordinador@jardinesdelrenacer.com', rol: 'COORDINADOR', sede: 'Armenia', estado: 'activo' });
+    getLocalUsers().forEach(u => filas.push({ origen: 'local', nombre: u.nombre_completo, usuario: u.usuario, correo: u.correo, rol: u.rol, sede: u.sede_nombre || sedeNombreDeId(u.sede_id), estado: 'activo' }));
+  }
+
+  const roles = ['ADMINISTRADOR', 'COORDINADOR', 'SEDE'];
+  const sedesOpts = (sel) => DEFAULT_SEDES.map(s => `<option value="${s.nombre}" ${s.nombre === sel ? 'selected' : ''}>${s.nombre}</option>`).join('');
+  tbody.innerHTML = filas.map((u, i) => {
+    const editable = u.origen !== 'demo';
+    const dis = editable ? '' : 'disabled';
+    return `<tr>
+      <td><strong>${u.nombre}</strong></td>
+      <td>${u.usuario}</td>
+      <td>${u.correo}</td>
+      <td><select id="u-rol-${i}" class="form-control" ${dis}>${roles.map(r => `<option ${r === u.rol ? 'selected' : ''}>${r}</option>`).join('')}</select></td>
+      <td><select id="u-sede-${i}" class="form-control" ${dis}>${sedesOpts(u.sede)}</select></td>
+      <td><select id="u-estado-${i}" class="form-control" ${dis}><option ${u.estado === 'activo' ? 'selected' : ''}>activo</option><option ${u.estado !== 'activo' ? 'selected' : ''}>inactivo</option></select></td>
+      <td>${editable ? `<button class="btn btn-primary btn-sm" onclick="guardarUsuarioAdmin(${i}, '${u.usuario}', '${u.origen}')">Guardar</button>` : '<span style="color:var(--text-muted); font-size:12px;">Fijo</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sedeNombreDeId(id) { return (DEFAULT_SEDES.find(s => s.id == id) || {}).nombre || ''; }
+
+async function guardarUsuarioAdmin(i, usuario, origen) {
+  const rol = document.getElementById('u-rol-' + i).value;
+  const sede = document.getElementById('u-sede-' + i).value;
+  const estado = document.getElementById('u-estado-' + i).value;
+
+  if (origen === 'local') {
+    const lista = getLocalUsers();
+    const u = lista.find(x => x.usuario === usuario);
+    if (u) { u.rol = rol; u.sede_nombre = sede; u.sede_id = sedeIdPorNombre(sede) || 1; saveLocalUsers(lista); }
+    showToast('Usuario actualizado (en este navegador)', 'success');
+    return;
+  }
+  try {
+    const r = await llamarSheets({ action: 'setRole', token: state.sheetsToken, usuario, rol, sede, estado });
+    if (r && r.success) showToast('Usuario actualizado. Aplica en su próximo ingreso.', 'success');
+    else showToast((r && r.error) || 'No se pudo actualizar', 'danger');
+  } catch (e) { showToast('Sin conexión con Google Sheets', 'danger'); }
 }
 
 // ============================================================================
