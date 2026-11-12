@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Datos de Cafetería — Jardines del Renacer</title>
   <link rel="icon" type="image/png" href="https://i.ibb.co/3ykS8mS/JR-Logo.png">
+  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="css/styles.css">
   <!-- Chart.js for interactive analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -17,7 +18,10 @@
   <div id="view-auth" class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-header">
-        <img src="https://i.ibb.co/3ykS8mS/JR-Logo.png" alt="Jardines del Renacer" class="auth-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 24 24\' fill=\'%23c8a951\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="auth-logo" style="width: 75px; height: 75px; margin: 0 auto 12px; display: block;">
+          <circle cx="50" cy="50" r="47" fill="#1a0e2a" stroke="#c8a951" stroke-width="3"/>
+          <path d="M50 80 L50 46 M50 54 C40 48 34 36 40 24 C46 32 49 40 50 46 C51 40 54 32 60 24 C66 36 60 48 50 54 M50 64 C38 60 32 52 36 42 C42 47 47 53 50 58 C53 53 58 47 64 42 C68 52 62 60 50 64" fill="#c8a951" stroke="#c8a951" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <h2>CRM DATOS DE CAFETERÍA</h2>
         <p>Jardines del Renacer — Sistema Centralizado</p>
       </div>
@@ -105,7 +109,10 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <img src="https://i.ibb.co/3ykS8mS/JR-Logo.png" alt="Logo" class="sidebar-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 24 24\' fill=\'%23c8a951\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sidebar-logo" style="width: 44px; height: 44px; flex-shrink: 0;">
+          <circle cx="50" cy="50" r="47" fill="#1a0e2a" stroke="#c8a951" stroke-width="3"/>
+          <path d="M50 80 L50 46 M50 54 C40 48 34 36 40 24 C46 32 49 40 50 46 C51 40 54 32 60 24 C66 36 60 48 50 54 M50 64 C38 60 32 52 36 42 C42 47 47 53 50 58 C53 53 58 47 64 42 C68 52 62 60 50 64" fill="#c8a951" stroke="#c8a951" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <div class="sidebar-title">
           <h2>JARDINES DEL RENACER</h2>
           <p>CRM Gastos de Cafetería</p>
@@ -961,6 +968,13 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- SCRIPT FRONTEND -->
-  <script src="js/app.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if (typeof state === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'js/app.js';
+      document.body.appendChild(s);
+    }
+  </script>
 </body>
 </html>
