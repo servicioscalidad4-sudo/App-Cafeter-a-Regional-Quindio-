@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a0e2a">
   <title>CRM Datos de Cafetería — Jardines del Renacer</title>
-  <link rel="icon" type="image/png" href="https://i.ibb.co/3ykS8mS/JR-Logo.png">
+  <link rel="icon" type="image/png" href="logo-jr.png">
   <link rel="stylesheet" href="styles.css">
   <!-- Chart.js for interactive analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -18,10 +18,7 @@
   <div id="view-auth" class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-header">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="auth-logo" style="width: 75px; height: 75px; margin: 0 auto 12px; display: block;">
-          <circle cx="50" cy="50" r="47" fill="#1a0e2a" stroke="#c8a951" stroke-width="3"/>
-          <path d="M50 80 L50 46 M50 54 C40 48 34 36 40 24 C46 32 49 40 50 46 C51 40 54 32 60 24 C66 36 60 48 50 54 M50 64 C38 60 32 52 36 42 C42 47 47 53 50 58 C53 53 58 47 64 42 C68 52 62 60 50 64" fill="#c8a951" stroke="#c8a951" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img src="logo-jr.png" alt="Jardines del Renacer" class="auth-logo" style="width: 85px; height: 85px; margin: 0 auto 12px; display: block; border-radius: 50%;">
         <h2>CRM DATOS DE CAFETERÍA</h2>
         <p>Jardines del Renacer — Sistema Centralizado</p>
       </div>
@@ -48,6 +45,30 @@
           </button>
           <div style="margin-top: 15px; text-align: center; font-size: 11.5px; color: var(--text-muted);">
             Usuario demo: <strong>admin</strong> / Clave: <strong>admin123</strong>
+          </div>
+          <div style="margin-top: 10px; text-align: center; font-size: 12.5px;">
+            <a href="#" onclick="mostrarRecuperarClave(event)" style="color: var(--primary, #1a0e2a); font-weight: 600;">¿Olvidó su clave? Tengo un token</a>
+          </div>
+        </form>
+
+        <!-- Formulario Recuperar clave con token (12 h) -->
+        <form id="form-reset" style="display: none;" onsubmit="handleResetConToken(event)">
+          <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 14px;">Pida al administrador un <strong>token de recuperación</strong> (válido por 12 horas) e ingréselo aquí junto con su nueva clave.</p>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Usuario o Correo</label>
+            <input type="text" id="reset-usuario" class="form-control" required autocomplete="username">
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Token de recuperación</label>
+            <input type="text" id="reset-token" class="form-control" required placeholder="Ej: A7K2-9QXM-4TPD" autocomplete="off" style="text-transform: uppercase; letter-spacing: 1px;">
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Nueva contraseña (mínimo 6 caracteres)</label>
+            <input type="password" id="reset-password" class="form-control" required minlength="6" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-gold" style="width: 100%;">Cambiar mi clave</button>
+          <div style="margin-top: 12px; text-align: center; font-size: 12.5px;">
+            <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--text-muted);">← Volver a iniciar sesión</a>
           </div>
         </form>
 
@@ -111,10 +132,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sidebar-logo" style="width: 44px; height: 44px; flex-shrink: 0;">
-          <circle cx="50" cy="50" r="47" fill="#1a0e2a" stroke="#c8a951" stroke-width="3"/>
-          <path d="M50 80 L50 46 M50 54 C40 48 34 36 40 24 C46 32 49 40 50 46 C51 40 54 32 60 24 C66 36 60 48 50 54 M50 64 C38 60 32 52 36 42 C42 47 47 53 50 58 C53 53 58 47 64 42 C68 52 62 60 50 64" fill="#c8a951" stroke="#c8a951" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img src="logo-jr.png" alt="Jardines del Renacer" class="sidebar-logo" style="width: 44px; height: 44px; flex-shrink: 0;">
         <div class="sidebar-title">
           <h2>JARDINES DEL RENACER</h2>
           <p>CRM Gastos de Cafetería</p>
@@ -859,6 +877,87 @@
   </div>
 
   <!-- Modal 3: Nuevo Auxiliar -->
+
+  <!-- Modal: Editar Usuario (admin) -->
+  <div class="modal-overlay" id="modal-editar-usuario">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>Editar Usuario</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-editar-usuario')">✕</button>
+      </div>
+      <form onsubmit="guardarEdicionUsuario(event)">
+        <div class="modal-body">
+          <input type="hidden" id="eu-usuario-original">
+          <input type="hidden" id="eu-origen">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Nombre completo *</label>
+            <input type="text" id="eu-nombre" class="form-control" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label>Usuario *</label>
+              <input type="text" id="eu-usuario" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Correo *</label>
+              <input type="email" id="eu-correo" class="form-control" required>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label>Celular</label>
+              <input type="tel" id="eu-celular" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Cargo</label>
+              <input type="text" id="eu-cargo" class="form-control">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label>Rol</label>
+              <select id="eu-rol" class="form-control"><option>ADMINISTRADOR</option><option>COORDINADOR</option><option>SEDE</option></select>
+            </div>
+            <div class="form-group">
+              <label>Sede</label>
+              <select id="eu-sede" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <select id="eu-estado" class="form-control"><option>activo</option><option>inactivo</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="cerrarModal('modal-editar-usuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Token de recuperación 12 h (admin) -->
+  <div class="modal-overlay" id="modal-token-usuario">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>Token de recuperación de clave</h3>
+        <button class="btn btn-sm btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.4);" onclick="cerrarModal('modal-token-usuario')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; margin:0 0 10px;">Usuario: <strong id="tk-usuario"></strong></p>
+        <div id="tk-resultado" style="text-align:center; padding: 18px 10px; background: var(--bg-main, #f8fafc); border: 1px dashed #c8a951; border-radius: 10px;">
+          <div id="tk-codigo" style="font-size: 26px; font-weight: 800; letter-spacing: 3px; font-family: monospace;">—</div>
+          <div id="tk-expira" style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"></div>
+        </div>
+        <p style="font-size:11.5px; color:var(--text-muted); margin:12px 0 0;">Entregue este token al usuario. Con él podrá definir una nueva clave desde <em>"¿Olvidó su clave?"</em> en la pantalla de ingreso. Es de un solo uso y vence a las 12 horas; generar uno nuevo invalida el anterior.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="cerrarModal('modal-token-usuario')">Cerrar</button>
+        <button type="button" class="btn btn-gold" onclick="copiarTokenUsuario()">Copiar token</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modal-nuevo-auxiliar">
     <div class="modal-card" style="max-width: 480px;">
       <div class="modal-header">

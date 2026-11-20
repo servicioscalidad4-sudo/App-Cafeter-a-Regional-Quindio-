@@ -466,6 +466,8 @@ function switchAuthTab(tab) {
   const btnReg = document.getElementById('tab-btn-register');
   const formLogin = document.getElementById('form-login');
   const formReg = document.getElementById('form-register');
+  const formReset = document.getElementById('form-reset');
+  if (formReset) formReset.style.display = 'none';
 
   if (tab === 'login') {
     btnLogin.classList.add('active');
@@ -1287,7 +1289,7 @@ async function cargarUsuarios() {
       const r = await llamarSheets({ action: 'listUsers', token: state.sheetsToken });
       if (r && r.success) {
         desdeSheets = true;
-        filas = r.usuarios.map(u => ({ origen: 'sheets', nombre: u.nombre, usuario: u.usuario, correo: u.correo, rol: u.rol, sede: u.sede, estado: u.estado }));
+        filas = r.usuarios.map(u => ({ origen: 'sheets', nombre: u.nombre, usuario: u.usuario, correo: u.correo, rol: u.rol, sede: u.sede, estado: u.estado, celular: u.celular || '', cargo: u.cargo || '' }));
       } else if (r && r.error) {
         showToast(r.error, 'warning');
       }
@@ -1299,6 +1301,7 @@ async function cargarUsuarios() {
     getLocalUsers().forEach(u => filas.push({ origen: 'local', nombre: u.nombre_completo, usuario: u.usuario, correo: u.correo, rol: u.rol, sede: u.sede_nombre || sedeNombreDeId(u.sede_id), estado: 'activo' }));
   }
 
+  window._usuariosFilas = filas;
   const roles = ['ADMINISTRADOR', 'COORDINADOR', 'SEDE'];
   const sedesOpts = (sel) => DEFAULT_SEDES.map(s => `<option value="${s.nombre}" ${s.nombre === sel ? 'selected' : ''}>${s.nombre}</option>`).join('');
   tbody.innerHTML = filas.map((u, i) => {
@@ -1311,7 +1314,7 @@ async function cargarUsuarios() {
       <td><select id="u-rol-${i}" class="form-control" ${dis}>${roles.map(r => `<option ${r === u.rol ? 'selected' : ''}>${r}</option>`).join('')}</select></td>
       <td><select id="u-sede-${i}" class="form-control" ${dis}>${sedesOpts(u.sede)}</select></td>
       <td><select id="u-estado-${i}" class="form-control" ${dis}><option ${u.estado === 'activo' ? 'selected' : ''}>activo</option><option ${u.estado !== 'activo' ? 'selected' : ''}>inactivo</option></select></td>
-      <td>${editable ? `<button class="btn btn-primary btn-sm" onclick="guardarUsuarioAdmin(${i}, '${u.usuario}', '${u.origen}')">Guardar</button>` : '<span style="color:var(--text-muted); font-size:12px;">Fijo</span>'}</td>
+      <td style="white-space:nowrap;">${editable ? `<button class="btn btn-primary btn-sm" onclick="guardarUsuarioAdmin(${i}, '${u.usuario}', '${u.origen}')">Guardar</button> <button class="btn btn-outline btn-sm" title="Editar todos los datos" onclick="abrirEditarUsuario(${i})">Editar</button> <button class="btn btn-gold btn-sm" title="Token de 12 horas para recuperar clave" onclick="abrirTokenUsuario(${i})">Token</button>` : '<span style="color:var(--text-muted); font-size:12px;">Fijo</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -1335,6 +1338,145 @@ async function guardarUsuarioAdmin(i, usuario, origen) {
     if (r && r.success) showToast('Usuario actualizado. Aplica en su próximo ingreso.', 'success');
     else showToast((r && r.error) || 'No se pudo actualizar', 'danger');
   } catch (e) { showToast('Sin conexión con Google Sheets', 'danger'); }
+}
+
+
+// ============================================================================
+// EDICIÓN COMPLETA DE USUARIOS + TOKEN DE RECUPERACIÓN (12 HORAS)
+// ============================================================================
+const TOKEN_HORAS = 12;
+
+function generarCodigoToken() {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O/1/I para evitar confusiones
+  const r = new Uint32Array(12);
+  crypto.getRandomValues(r);
+  const s = Array.from(r).map(n => abc[n % abc.length]).join('');
+  return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12);
+}
+
+function abrirEditarUsuario(i) {
+  const u = (window._usuariosFilas || [])[i];
+  if (!u) return;
+  document.getElementById('eu-usuario-original').value = u.usuario;
+  document.getElementById('eu-origen').value = u.origen;
+  document.getElementById('eu-nombre').value = u.nombre || '';
+  document.getElementById('eu-usuario').value = u.usuario || '';
+  document.getElementById('eu-correo').value = u.correo || '';
+  document.getElementById('eu-celular').value = u.celular || '';
+  document.getElementById('eu-cargo').value = u.cargo || '';
+  document.getElementById('eu-rol').value = u.rol || 'SEDE';
+  document.getElementById('eu-sede').innerHTML = DEFAULT_SEDES.map(s => `<option value="${s.nombre}" ${s.nombre === u.sede ? 'selected' : ''}>${s.nombre}</option>`).join('');
+  document.getElementById('eu-estado').value = u.estado || 'activo';
+  abrirModal('modal-editar-usuario');
+}
+
+async function guardarEdicionUsuario(e) {
+  e.preventDefault();
+  const original = document.getElementById('eu-usuario-original').value;
+  const origen = document.getElementById('eu-origen').value;
+  const datos = {
+    nombre: document.getElementById('eu-nombre').value.trim(),
+    usuario: document.getElementById('eu-usuario').value.trim().toLowerCase().replace(/\s+/g, ''),
+    correo: document.getElementById('eu-correo').value.trim().toLowerCase(),
+    celular: document.getElementById('eu-celular').value.trim(),
+    cargo: document.getElementById('eu-cargo').value.trim(),
+    rol: document.getElementById('eu-rol').value,
+    sede: document.getElementById('eu-sede').value,
+    estado: document.getElementById('eu-estado').value
+  };
+  if (!datos.nombre || !datos.usuario || !datos.correo) { showToast('Nombre, usuario y correo son obligatorios', 'warning'); return; }
+  if (['admin', 'coordinador'].includes(datos.usuario) && datos.usuario !== original) { showToast('Ese usuario está reservado', 'warning'); return; }
+
+  if (origen === 'local') {
+    const lista = getLocalUsers();
+    const u = lista.find(x => x.usuario === original);
+    if (!u) { showToast('Usuario no encontrado', 'danger'); return; }
+    if (lista.some(x => x !== u && (x.usuario === datos.usuario || x.correo === datos.correo))) { showToast('Usuario o correo ya registrado', 'warning'); return; }
+    Object.assign(u, { nombre_completo: datos.nombre, usuario: datos.usuario, correo: datos.correo, celular: datos.celular, cargo: datos.cargo, rol: datos.rol, sede_nombre: datos.sede, sede_id: sedeIdPorNombre(datos.sede) || 1 });
+    saveLocalUsers(lista);
+    showToast('Usuario actualizado (en este navegador)', 'success');
+    cerrarModal('modal-editar-usuario'); cargarUsuarios();
+    return;
+  }
+  try {
+    const r = await llamarSheets({ action: 'updateUser', token: state.sheetsToken, usuarioOriginal: original, ...datos });
+    if (r && r.success) {
+      showToast('Usuario actualizado correctamente', 'success');
+      cerrarModal('modal-editar-usuario'); cargarUsuarios();
+    } else showToast((r && r.error) || 'No se pudo actualizar', 'danger');
+  } catch (err) { showToast('Sin conexión con Google Sheets', 'danger'); }
+}
+
+async function abrirTokenUsuario(i) {
+  const u = (window._usuariosFilas || [])[i];
+  if (!u) return;
+  document.getElementById('tk-usuario').innerText = u.usuario;
+  document.getElementById('tk-codigo').innerText = 'Generando...';
+  document.getElementById('tk-expira').innerText = '';
+  abrirModal('modal-token-usuario');
+
+  if (u.origen === 'local') {
+    const codigo = generarCodigoToken();
+    const expira = Date.now() + TOKEN_HORAS * 3600 * 1000;
+    const lista = getLocalUsers();
+    const x = lista.find(y => y.usuario === u.usuario);
+    if (x) { x.reset_token = codigo; x.reset_expira = expira; saveLocalUsers(lista); }
+    mostrarTokenGenerado(codigo, expira);
+    return;
+  }
+  try {
+    const r = await llamarSheets({ action: 'createResetToken', token: state.sheetsToken, usuario: u.usuario, horas: TOKEN_HORAS });
+    if (r && r.success) mostrarTokenGenerado(r.resetToken, r.expira);
+    else { document.getElementById('tk-codigo').innerText = '—'; document.getElementById('tk-expira').innerText = (r && r.error) || 'No se pudo generar el token'; }
+  } catch (err) { document.getElementById('tk-codigo').innerText = '—'; document.getElementById('tk-expira').innerText = 'Sin conexión con Google Sheets'; }
+}
+
+function mostrarTokenGenerado(codigo, expira) {
+  document.getElementById('tk-codigo').innerText = codigo;
+  const f = new Date(expira);
+  document.getElementById('tk-expira').innerText = 'Vence: ' + f.toLocaleString('es-CO') + ' (' + TOKEN_HORAS + ' horas)';
+}
+
+function copiarTokenUsuario() {
+  const t = document.getElementById('tk-codigo').innerText;
+  if (!t || t === '—' || t === 'Generando...') return;
+  navigator.clipboard.writeText(t).then(() => showToast('Token copiado', 'success'), () => showToast('No se pudo copiar', 'warning'));
+}
+
+function mostrarRecuperarClave(e) {
+  if (e) e.preventDefault();
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('form-register').style.display = 'none';
+  document.getElementById('form-reset').style.display = 'block';
+  document.getElementById('tab-btn-login').classList.remove('active');
+  document.getElementById('tab-btn-register').classList.remove('active');
+}
+
+async function handleResetConToken(e) {
+  e.preventDefault();
+  const usuario = document.getElementById('reset-usuario').value.trim().toLowerCase().replace(/\s+/g, '');
+  const tokenIn = document.getElementById('reset-token').value.trim().toUpperCase();
+  const nueva = document.getElementById('reset-password').value;
+  if (nueva.length < 6) { showToast('La clave debe tener mínimo 6 caracteres', 'warning'); return; }
+
+  // 1) Usuarios locales de este navegador
+  const lista = getLocalUsers();
+  const loc = lista.find(u => (u.usuario === usuario || u.correo === usuario) && u.reset_token === tokenIn);
+  if (loc) {
+    if (Date.now() > (loc.reset_expira || 0)) { showToast('El token venció. Pida uno nuevo al administrador.', 'danger'); return; }
+    loc.hash = await sha256Hex(nueva);
+    delete loc.reset_token; delete loc.reset_expira;
+    saveLocalUsers(lista);
+    showToast('Clave cambiada. Ya puede ingresar.', 'success');
+    switchAuthTab('login');
+    return;
+  }
+  // 2) Google Sheets
+  try {
+    const r = await llamarSheets({ action: 'resetWithToken', usuario, resetToken: tokenIn, password: nueva });
+    if (r && r.success) { showToast('Clave cambiada. Ya puede ingresar.', 'success'); switchAuthTab('login'); }
+    else showToast((r && r.error) || 'Token inválido o vencido', 'danger');
+  } catch (err) { showToast('Sin conexión con Google Sheets', 'danger'); }
 }
 
 // ============================================================================

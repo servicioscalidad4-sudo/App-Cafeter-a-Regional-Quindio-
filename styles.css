@@ -90,8 +90,8 @@ textarea.form-control { height: auto; }
   height: 44px;
   border-radius: 50%;
   background: #ffffff;
-  padding: 3px;
-  object-fit: contain;
+  padding: 0;
+  object-fit: cover;
 }
 
 .sidebar-title h2 {
@@ -645,7 +645,8 @@ textarea.form-control { height: auto; }
   width: 75px;
   height: 75px;
   margin: 0 auto 12px;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .auth-header h2 {
